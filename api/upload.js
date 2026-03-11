@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     const fileData = Buffer.concat(chunks);
 
     // UPLOAD ENDPOINT (yang benar)
-    const uploadUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blob/${walletAddress}/${fileName}`;
+    const uploadUrl = `https://api.shelbynet.shelby.xyz/v1/blob/${walletAddress}/${fileName}`;
 
     const shelbyRes = await fetch(uploadUrl, {
       method: "PUT",
