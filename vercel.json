@@ -3,5 +3,11 @@
     "api/upload.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/api/upload",
+      "dest": "/api/upload.js"
+    }
+  ]
 }
