@@ -1,118 +1,63 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'x-file-name, x-file-type, x-wallet-address');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+
+  const API_KEY = process.env.SHELBY_API_KEY;
+  if (!API_KEY) return res.status(500).json({ error: 'API key not configured' });
+
+  const fileName = req.headers['x-file-name'];
+  const fileType = req.headers['x-file-type'] || 'application/octet-stream';
+  const walletAddress = req.headers['x-wallet-address'];
+
+  if (!fileName || !walletAddress) {
+    return res.status(400).json({ error: 'Missing x-file-name or x-wallet-address header' });
+  }
 
   try {
-
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "x-file-name, x-file-type, x-wallet-address"
-    );
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
-
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
-    }
-
-    const API_KEY = process.env.SHELBY_API_KEY;
-
-    if (!API_KEY) {
-      return res.status(500).json({ error: "Missing Shelby API key" });
-    }
-
-    const fileName = req.headers["x-file-name"];
-    const fileType = req.headers["x-file-type"] || "application/octet-stream";
-    const walletAddress = req.headers["x-wallet-address"] || "0x1";
-
-    if (!fileName) {
-      return res.status(400).json({ error: "Missing file name" });
-    }
-
+    // Read raw body (base64 string from frontend)
     const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks).toString('utf8');
 
-    const fileData = Buffer.concat(chunks);
+    // Decode base64 → raw binary
+    const fileBuffer = Buffer.from(raw, 'base64');
 
-    const uploadUrl =
-      `https://ace-worker-0-646682240579.europe-west1.run.app/shelby/v1/blobs/${walletAddress}/${fileName}`;
+    // PUT /shelby/v1/blobs/{walletAddress}/{fileName}
+    const uploadUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${fileName}`;
 
     const shelbyRes = await fetch(uploadUrl, {
-      method: "PUT",
+      method: 'PUT',
       headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        "Content-Type": fileType
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': fileType,
+        'Content-Length': String(fileBuffer.length),
       },
-      body: fileData
+      body: fileBuffer,
     });
 
-    const text = await shelbyRes.text();
-
-    if (!shelbyRes.ok) {
-      return res.status(400).json({
-        error: "Shelby upload failed",
-        detail: text
-      });
+    if (shelbyRes.status === 204 || shelbyRes.ok) {
+      const publicUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${fileName}`;
+      return res.status(200).json({ success: true, url: publicUrl });
     }
 
-    const publicUrl =
-      `https://ace-worker-0-646682240579.europe-west1.run.app/shelby/v1/blobs/${walletAddress}/${fileName}`;
-
-    return res.status(200).json({
-      success: true,
-      url: publicUrl
+    const errText = await shelbyRes.text();
+    console.error('Shelby error:', shelbyRes.status, errText);
+    return res.status(shelbyRes.status).json({
+      error: 'Shelby upload failed',
+      status: shelbyRes.status,
+      detail: errText,
     });
 
   } catch (err) {
-
-    console.error(err);
-
-    return res.status(500).json({
-      error: "Server crash",
-      detail: err.message
-    });
-
-  }
-
-};        error: "Shelby upload failed",
-        detail: errText
-      });
-
-    }
-
-  } catch (err) {
-
-    return res.status(500).json({
-      error: err.message
-    });
-
+    console.error('Handler error:', err);
+    return res.status(500).json({ error: err.message });
   }
 }
 
 export const config = {
-  api: {
-    bodyParser: false
-  }
-};        detail: errText
-      });
-
-    }
-
-  } catch (err) {
-
-    return res.status(500).json({
-      error: err.message
-    });
-
-  }
-}
-
-export const config = {
-  api: {
-    bodyParser: false
-  }
+  api: { bodyParser: false },
 };
