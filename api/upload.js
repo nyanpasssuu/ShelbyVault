@@ -34,22 +34,23 @@ export default async function handler(req, res) {
 
     const fileData = Buffer.concat(chunks);
 
-    // UPLOAD ENDPOINT (yang benar)
-    const uploadUrl = `https://api.shelbynet.shelby.xyz/v1/blob/${walletAddress}/${fileName}`;
+    // WORKER ENDPOINT (punya kamu)
+    const uploadUrl = `https://ace-worker-0-646682240579.europe-west1.run.app/shelby/v1/blobs/${walletAddress}/${fileName}`;
 
     const shelbyRes = await fetch(uploadUrl, {
       method: "PUT",
       headers: {
         "Authorization": `Bearer ${API_KEY}`,
         "Content-Type": fileType,
-        "Content-Length": String(fileData.length)
+        "Content-Length": String(fileData.length),
+        "Accept": "application/json"
       },
       body: fileData
     });
 
     if (shelbyRes.ok) {
 
-      const publicUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blob/${walletAddress}/${fileName}`;
+      const publicUrl = `https://ace-worker-0-646682240579.europe-west1.run.app/shelby/v1/blobs/${walletAddress}/${fileName}`;
 
       return res.status(200).json({
         success: true,
@@ -63,6 +64,24 @@ export default async function handler(req, res) {
       return res.status(400).json({
         error: "Shelby upload failed",
         detail: errText
+      });
+
+    }
+
+  } catch (err) {
+
+    return res.status(500).json({
+      error: err.message
+    });
+
+  }
+}
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};        detail: errText
       });
 
     }
