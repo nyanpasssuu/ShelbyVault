@@ -26,22 +26,22 @@ export default async function handler(req, res) {
     // Decode base64 → raw binary
     const fileBuffer = Buffer.from(raw, 'base64');
 
-    // PUT /shelby/v1/blobs/{walletAddress}/{fileName}
-    const uploadUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${fileName}`;
+    // POST https://testnet.shelby.xyz/v1/blobs (correct endpoint from Shelby mod)
+    const uploadUrl = `https://testnet.shelby.xyz/v1/blobs`;
 
     const shelbyRes = await fetch(uploadUrl, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': fileType,
-        'Content-Length': String(fileBuffer.length),
+        'Content-Type': 'application/octet-stream',
       },
       body: fileBuffer,
     });
 
-    if (shelbyRes.status === 204 || shelbyRes.ok) {
-      const publicUrl = `https://api.shelbynet.shelby.xyz/shelby/v1/blobs/${walletAddress}/${fileName}`;
-      return res.status(200).json({ success: true, url: publicUrl });
+    if (shelbyRes.ok) {
+      const data = await shelbyRes.json().catch(() => ({}));
+      const publicUrl = `https://testnet.shelby.xyz/v1/blobs/${walletAddress}/${fileName}`;
+      return res.status(200).json({ success: true, url: publicUrl, data });
     }
 
     const errText = await shelbyRes.text();
